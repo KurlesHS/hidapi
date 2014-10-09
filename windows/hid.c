@@ -620,15 +620,16 @@ int HID_API_EXPORT HID_API_CALL hid_write(hid_device *dev, const unsigned char *
 	   create a temporary buffer which is the proper size. */
 	if (length >= dev->output_report_length) {
 		/* The user passed the right number of bytes. Use the buffer as-is. */
-		buf = (unsigned char *) data;
-	} else {
-		/* Create a temporary buffer and copy the user's data
-		   into it, padding the rest with zeros. */
-		buf = (unsigned char *) malloc(dev->output_report_length);
-		memcpy(buf, data, length);
-		memset(buf + length, 0, dev->output_report_length - length);
-		length = dev->output_report_length;
-	}
+        length = dev->output_report_length - 1;
+    }
+    /* Create a temporary buffer and copy the user's data
+           into it, padding the rest with zeros. */
+    buf = (unsigned char *) malloc(dev->output_report_length);
+    memcpy(buf + 1, data, length);
+    memset(buf + length + 1, 0, dev->output_report_length - length - 1);
+    buf[0] = 0x00;
+    length = dev->output_report_length;
+
 
 	res = WriteFile(dev->device_handle, buf, length, NULL, &ol);
 	
@@ -649,7 +650,9 @@ int HID_API_EXPORT HID_API_CALL hid_write(hid_device *dev, const unsigned char *
 		register_error(dev, "WriteFile");
 		bytes_written = -1;
 		goto end_of_function;
-	}
+    } else {
+        --bytes_written;
+    }
 
 end_of_function:
 	if (buf != data)
